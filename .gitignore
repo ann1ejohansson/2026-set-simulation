@@ -6,11 +6,9 @@
 # macOS
 .DS_Store
 
-# Rendered output (rebuilt from README.md / the .R files)
 README.html
 README_files/
 tests/error-notebook/*.html
 
-# Generated data — remove the leading "#" to stop tracking these folders
 data/
 results/

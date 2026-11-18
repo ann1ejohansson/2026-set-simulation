@@ -7,11 +7,11 @@ library(tidyverse)
 run <- "code-testing"
 
 cfg <- list(
-  # simulation functions, plus copies of the original bigraph's error functions
   fun_dir = "functions",
   data_dir = file.path("data", run),
   results_dir = file.path("results", run),
 
+  # causes to include in the bigraph
   causes = c(
     "operator_relevant",
     "operand_related",
@@ -35,7 +35,7 @@ cfg <- list(
   # generation factors (full factorial over these)
   n_errors = c(5, 10, 15, 20, 30, 50, 100),
   p_dom = c(0, 0.1, 0.3, 0.5, 0.7, 0.9, 1), # 0 = null model: every error's cause drawn independently from base rates
-  noise_prob = 0,
+  noise_prob = c(0, 0.05, 0.1, 0.3),
   n_students = 3,
   seed = 20261117,
 
@@ -59,8 +59,11 @@ cfg <- list(
     "zero"
   ),
 
-  # responses a noise error can produce (any wrong whole number in this range)
+  # responses a noise error can produce: usually a wrong whole number in
+  # noise_range; with probability noise_wide_prob one in noise_wide_range instead
   noise_range = 0:100,
+  noise_wide_range = 101:1000,
+  noise_wide_prob = 0.1,
 
   # SET settings
   window_size = seq(10, 50, 10),

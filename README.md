@@ -54,7 +54,8 @@ The main settings:
 | `n_errors`         | 5, 10, 15, 20, 30, 50, 100         | Length of each student's error sequence |
 | `p_dom`            | 0, 0.1, 0.3, 0.5, 0.7, 0.9, 1      | Chance that an error comes from the dominant cause (0 = no dominant cause) |
 | `dom_causes`       | 14 error causes (or subset) | Causes used as dominant cause |
-| `noise_prob`       | 0                                  | Chance that an error is noise (a random wrong answer in `noise_range`) |
+| `noise_prob`       | 0                                  | Chance that an error is noise (a random wrong answer, see below) |
+| `noise_range`, `noise_wide_range`, `noise_wide_prob` | `0:100`, `101:1000`, `0.1` | Noise answers come from `noise_range`, or with probability `noise_wide_prob` from `noise_wide_range` (rare large answers) |
 | `n_students`       |                                  | Students per condition |
 | `seed`             |                            | Base seed; each condition uses `seed + condition_id` |
 | `window_size`, `weight_method`, `beta` | | SET settings, not used yet |
@@ -80,7 +81,9 @@ The main settings:
 4. **Simulation.** For each condition and student, `simulate_student()`
    generates every error item first:
    1. draw an item (uniformly);
-   2. with probability `noise_prob`: noise (a random wrong answer);
+   2. with probability `noise_prob`: noise, a random wrong answer drawn
+      uniformly from `noise_range` or, with probability `noise_wide_prob`,
+      from `noise_wide_range`;
    3. otherwise, with probability `p_dom`: the dominant cause, **if it can
       produce an error on that item**;
    4. otherwise: a cause drawn from the base rates of the causes that can

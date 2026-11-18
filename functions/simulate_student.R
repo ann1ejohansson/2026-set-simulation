@@ -19,7 +19,12 @@ simulate_student <- function(
 
     if (runif(1) < noise_prob) {
       cause <- "noise"
-      response <- sample_one(setdiff(cfg$noise_range, item$correct))
+      noise_pool <- if (runif(1) < cfg$noise_wide_prob) {
+        cfg$noise_wide_range
+      } else {
+        cfg$noise_range
+      }
+      response <- sample_one(setdiff(noise_pool, item$correct))
     } else {
       # causes that can produce an error on this item
       avail <- item_causes[[item_key]]
