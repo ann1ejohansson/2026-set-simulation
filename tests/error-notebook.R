@@ -1,3 +1,5 @@
+# ai generated
+
 # Error Notebook: interactive view of the generated error sequences
 # Run from the 2026-set-simulation folder, after 01-generate-errors.R.
 # Builds tests/error-notebook/<run>.html from the run set in cfg.R and opens it
@@ -37,10 +39,14 @@ notebook_conditions <- map(seq_len(nrow(conditions)), \(k) {
     # expected share of each true cause under the generating script's model
     exp = expected_shares %>%
       filter(condition_id == cond$condition_id) %>%
-      { setNames(as.list(.$expected), .$cause) },
+      {
+        setNames(as.list(.$expected), .$cause)
+      },
     students = errors %>%
       split(.$student_id) %>%
-      map(\(s) pmap(list(s$m, s$n, s$correct, s$response, s$true_cause), list)) %>%
+      map(\(s) {
+        pmap(list(s$m, s$n, s$correct, s$response, s$true_cause), list)
+      }) %>%
       unname()
   )
 })
@@ -54,7 +60,12 @@ notebook_data <- list(
 
 # fill the data into the page template
 template <- read_file("tests/error-notebook/template.html")
-json <- jsonlite::toJSON(notebook_data, auto_unbox = TRUE, na = "null", digits = 6)
+json <- jsonlite::toJSON(
+  notebook_data,
+  auto_unbox = TRUE,
+  na = "null",
+  digits = 6
+)
 page <- sub("/*DATA*/null", json, template, fixed = TRUE)
 # declare UTF-8 so the browser shows ×, − and other symbols correctly
 page <- paste0(
@@ -69,4 +80,6 @@ out_file <- file.path("tests", "error-notebook", paste0(run_name, ".html"))
 write_file(page, out_file)
 message("Error Notebook written to ", out_file)
 
-if (interactive()) browseURL(normalizePath(out_file))
+if (interactive()) {
+  browseURL(normalizePath(out_file))
+}

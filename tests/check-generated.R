@@ -37,18 +37,22 @@ validity <- map_dfr(conditions$condition_id, \(id) {
 
   fits_true_cause <- errors %>%
     filter(true_cause != "noise") %>%
-    semi_join(plausible_causes, by = c("m", "n", "response", "true_cause" = "plausible"))
+    semi_join(
+      plausible_causes,
+      by = c("m", "n", "response", "true_cause" = "plausible")
+    )
 
   tibble(
     condition_id = id,
     n_rows_ok = nrow(errors) == cond$n_errors * n_distinct(errors$student_id),
     no_correct = all(errors$response != errors$correct),
-    all_fit_true_cause = nrow(fits_true_cause) == sum(errors$true_cause != "noise"),
+    all_fit_true_cause = nrow(fits_true_cause) ==
+      sum(errors$true_cause != "noise"),
     dom_cause_ok = all(errors$dom_cause %in% cond$dom_cause)
   )
 })
 
-validity %>% filter(!if_all(-condition_id))  # empty if everything is fine
+validity %>% filter(!if_all(-condition_id)) # empty if everything is fine
 
 # 3. Realised cause shares in the baseline vs. expected shares ----------------
 # (expected shares differ from cause_probs, because a cause can only be drawn
@@ -97,8 +101,18 @@ check_students <- function(id) {
       n_fits = sum(!is.na(plausible)),
       .groups = "drop"
     ) %>%
-    left_join(expected_shares, by = c("condition_id", "dom_cause" = "cause")) %>%
-    group_by(condition_id, student_id, n_errors, p_dom, noise_prob, dom_cause) %>%
+    left_join(
+      expected_shares,
+      by = c("condition_id", "dom_cause" = "cause")
+    ) %>%
+    group_by(
+      condition_id,
+      student_id,
+      n_errors,
+      p_dom,
+      noise_prob,
+      dom_cause
+    ) %>%
     summarise(
       expected_dom = first(expected),
       true_dom = mean(true_cause == dom_cause), # share actually caused by it

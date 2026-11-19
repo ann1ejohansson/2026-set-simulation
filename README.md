@@ -1,6 +1,6 @@
 # SET simulation
 
-> **Status:** developing code to generate data
+> **Status:** testing code to run set on generated data
 
 Simulation study for SET (Systematic Error Tracing). We generate sequences of wrong answers to
 single-digit multiplication items (m × n) for simulated students, where each
@@ -31,7 +31,9 @@ well SET recovers each student's dominant cause.
 │   ├── run_cause.R            # calls one error-cause function for an item
 │   ├── sample_one.R           # draws one element of a vector
 │   ├── simulate_student.R     # builds one student's error sequence
-│   └── error_categories/      # one function per error cause (see below)
+│   ├── run_set_student.R      # runs SET on one student's error sequence
+│   ├── error_categories/      # one function per error cause (see below)
+│   └── set/                   # SET model, copied from 2025-error-tracing (see below)
 ├── tests/
 │   ├── check-generated.R      # checks on the output of step 1
 │   ├── error-notebook.R       # builds the interactive Error Notebook for a run
@@ -110,6 +112,44 @@ The main settings:
 | `cause_probs.rds` | Normalised sampling probabilities per cause |
 | `expected_shares.rds` | Expected share of each true cause per condition under this sampling model (used by the checks and the notebook) |
 
+### `scripts/02-compile-errors.R`: compile error sequences
+
+Combines the per-condition files into one data set. Set `compiled_name` and
+edit the `filter()` on `conditions` to keep only the conditions you want (by
+default it keeps every condition in `cfg`). Files are looked up through
+`conditions.rds`, so files left over from an earlier run in the same folder are
+ignored. Output: `data/<run>/compiled/<compiled_name>.rds`.
+
+### `scripts/03-run-set.R`: run SET
+
+For every condition and student, `run_set_student()`:
+
+1. builds the student's bigraph with `bigrapherr()` and drops errors that fit
+   no cause (as the real-data pipeline does), so windows count *explained*
+   errors only;
+2. slides a window of `window_size` explained errors over the sequence (full
+   windows only: window sizes larger than the number of explained errors give
+   no output, and conditions with `n_errors` below the smallest window are
+   skipped);
+3. runs `isingerr()` on each window for every `weight_method` × `beta`, with
+   ties broken by theoretical base rate.
+
+Each output row is used for two evaluations:
+
+- **Recovery:** the window's probabilities (`top_cause`, `p_<cause>`) against
+  the student's `dom_cause`.
+- **Prediction:** the same probabilities against the next explained error
+  after the window (`next_true_cause`, and `next_causes`, the causes that
+  could produce it). Empty for the last window of a sequence.
+
+**Output** (`results/<run>/set/`): one file per condition, with the same name as
+in `data/<run>/`, plus `set_conditions.rds` listing the conditions that were run.
+Columns: the condition settings, `student_id`, `dom_cause`, `window_size`,
+`weights`, `beta`, `n_explained` (explained errors up to the window's end),
+`window_start` / `window_end` (positions in the full sequence), `top_cause`,
+`next_error_index`, `next_true_cause`, `next_causes` and one `p_<cause>`
+column per cause.
+
 ### `tests/check-generated.R`: checks on generated data
 
 Run after step 1. Sources `cfg.R` and reads the run in `cfg$data_dir` (change
@@ -157,6 +197,30 @@ answers the cause can produce.
 | `reverse` | Digits reversed (not for one-digit answers or answers ending in 0) |
 | `zero` | 0 |
 
+## SET model (`functions/set/`)
+
+Copied on 2026-11-19 from `../2025-error-tracing` (the `original` bigraph
+version; these files were untracked in that repo). Each file has a comment
+line saying where it came from. The cause functions in
+`functions/error_categories/` are identical to that repo's `original` ones.
+
+| File | Role |
+|------|------|
+| `classifierr.R` | One error → one bigraph column: 1 for every cause in `cfg$causes` that can produce the response, plus `misidentified` / `unidentified` rows |
+| `bigrapherr.R` | A data frame of errors → bigraph (causes × errors); from `bigrapherr_new.R` in the source repo |
+| `isingerr.R` | SET: probability of each cause given a window of the bigraph, for a `weights` method and `beta` |
+| `majority_voterr.R` | Baseline: ranks causes by a fixed base-rate order |
+| `order_ties.R` | Breaks ties in `isingerr` output by base-rate order (used when `majority_order` is passed) |
+
+Usage, as in the source pipeline: build the bigraph per student, drop the
+`misidentified` and `unidentified` rows, then call `isingerr()` on a window of
+columns.
+
+Known issue: an error that fits no cause (possible for noise errors) gives an
+all-zero column. With `weights = "error"` or `"cause*error"` this divides 0 by
+0, and `isingerr()` stops with "Predicted probabilities do not sum to 1". The
+source pipeline wraps the call in `try()` and skips such windows.
+
 ## Running the simulation
 
 Run everything from the `2026-set-simulation/` folder. Both scripts source `scripts/cfg.R`
@@ -164,6 +228,8 @@ themselves.
 
 ```r
 source("scripts/01-generate-errors.R")
+source("scripts/02-compile-errors.R")   # optional: combine selected conditions
+source("scripts/03-run-set.R")
 source("tests/check-generated.R")
 source("tests/error-notebook.R")   # optional: open the Error Notebook
 ```
@@ -172,7 +238,5 @@ Requires R, the `tidyverse` and `jsonlite`.
 
 ## Next steps
 
-- Step 2: run SET on the generated sequences over `window_size`,
-  `weight_method` and `beta`.
 - Evaluate recovery of the dominant cause per condition.
 - Figures.

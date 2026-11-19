@@ -12,11 +12,28 @@
 # simulation settings ----
 
 source("scripts/cfg.R")
+# conditions to generate
+n_cond <- length(cfg$n_errors) *
+  length(cfg$noise_prob) *
+  (any(cfg$p_dom == 0) + sum(cfg$p_dom > 0) * length(cfg$dom_causes))
+message(sprintf(
+  "Generating %d conditions across %s cause profiles (n = %d), %s errors",
+  n_cond,
+  format(n_cond * cfg$n_students, big.mark = ","),
+  cfg$n_students,
+  format(
+    n_cond / length(cfg$n_errors) * sum(cfg$n_errors) * cfg$n_students,
+    big.mark = ","
+  )
+))
 
-# output dir
-if (!dir.exists(cfg$data_dir)) {
-  dir.create(cfg$data_dir, recursive = TRUE, showWarnings = FALSE)
+
+# output dir: start from an empty folder so no files from earlier runs remain
+stopifnot(dirname(cfg$data_dir) == "data", nzchar(run))
+if (dir.exists(cfg$data_dir)) {
+  unlink(cfg$data_dir, recursive = TRUE)
 }
+dir.create(cfg$data_dir, recursive = TRUE, showWarnings = FALSE)
 
 # generate items ----
 
@@ -132,7 +149,12 @@ expected_shares <- conditions %>%
     expected = (1 - first(noise_prob)) * sum(item_prob * share),
     .groups = "drop"
   ) %>%
-  bind_rows(transmute(conditions, condition_id, cause = "noise", expected = noise_prob)) %>%
+  bind_rows(transmute(
+    conditions,
+    condition_id,
+    cause = "noise",
+    expected = noise_prob
+  )) %>%
   filter(expected > 0)
 
 # create error sequence per condition
@@ -171,3 +193,30 @@ write_rds(
 write_rds(cause_probs, file.path(cfg$data_dir, "cause_probs.rds"))
 write_rds(cause_responses, file.path(cfg$data_dir, "cause_responses.rds"))
 write_rds(expected_shares, file.path(cfg$data_dir, "expected_shares.rds"))
+
+# size of the generated data ----
+out_files <- c(
+  file.path(cfg$data_dir, conditions$file),
+  file.path(
+    cfg$data_dir,
+    c(
+      "conditions.rds",
+      "conditions.csv",
+      "base_rate_theoretical.rds",
+      "cause_probs.rds",
+      "cause_responses.rds",
+      "expected_shares.rds"
+    )
+  )
+)
+message(sprintf(
+  "Generated %d conditions, %s errors from %s students: %s on disk in %s",
+  nrow(conditions),
+  format(sum(conditions$n_errors) * cfg$n_students, big.mark = ","),
+  format(nrow(conditions) * cfg$n_students, big.mark = ","),
+  format(
+    structure(sum(file.size(out_files)), class = "object_size"),
+    units = "auto"
+  ),
+  cfg$data_dir
+))
